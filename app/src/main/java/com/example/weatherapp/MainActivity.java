@@ -1,11 +1,14 @@
 package com.example.weatherapp;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -83,8 +86,6 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
         loadWeatherData();
     }
 
-    // Override ForecastAdapterOnClickHandler's onClick method
-    // Show a Toast when an item is clicked, displaying that item's weather data
     /**
      * This method is overridden by our MainActivity class in order to handle RecyclerView item
      * clicks.
@@ -94,8 +95,16 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
     @Override
     public void onClick(String weatherForDay) {
         Context context = this;
-        Toast.makeText(context, weatherForDay, Toast.LENGTH_SHORT)
-                .show();
+
+        // Launch the DetailActivity using an explicit Intent
+        Class destinationClass = DetailActivity.class;
+        Intent intentToStartDetailActivity = new Intent(context, destinationClass);
+
+        // Pass the weather to the DetailActivity
+        intentToStartDetailActivity.putExtra(Intent.EXTRA_TEXT, weatherForDay);
+
+        startActivity(intentToStartDetailActivity);
+
     }
 
     // Create a method called showErrorMessage that will hide the weather data and show the error message
@@ -169,6 +178,11 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
             return true;
         }
 
+        if(id == R.id.action_map){
+            openLocationInMap();
+            return true;
+        }
+
         return super.onOptionsItemSelected(item);
     }
 
@@ -220,6 +234,30 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
                 // If the weather data was null, show the error message
                 showErrorMessage();
             }
+        }
+    }
+
+    /**
+     * This method uses the URI scheme for showing a location found on a
+     * map. This super-handy intent is detailed in the "Common Intents"
+     * page of Android's developer site:
+     *
+     * @see <a"http://developer.android.com/guide/components/intents-common.html#Maps">
+     *
+     * Hint: Hold Command on Mac or Control on Windows and click that link
+     * to automagically open the Common Intents page
+     */
+    private void openLocationInMap(){
+        String addressString = "1600 Ampitheatre Parkway, CA";
+        Uri geolocation = Uri.parse("geo:0,0?q=" + addressString);
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(geolocation);
+
+        if(intent.resolveActivity(getPackageManager()) != null){
+            startActivity(intent);
+        } else{
+            Log.d("ERROR", "Can't call " + geolocation.toString());
         }
     }
 }
