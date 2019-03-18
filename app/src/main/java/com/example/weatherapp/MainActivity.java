@@ -2,6 +2,7 @@ package com.example.weatherapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
@@ -12,6 +13,7 @@ import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -32,7 +34,8 @@ import com.example.weatherapp.utilities.OpenWeatherJsonUtils;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity implements ForecastAdapter.ForecastAdapterOnClickHandler,
-        LoaderManager.LoaderCallbacks<String[]> {
+        LoaderManager.LoaderCallbacks<String[]>,
+        SharedPreferences.OnSharedPreferenceChangeListener{
 
     // Add a private RecyclerView variable called mRecyclerView
     private RecyclerView mRecyclerView;
@@ -47,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
     private ProgressBar mLoadingIndicator;
 
     private static final int FORECAST_LOADER_ID = 0;
+
+    // Private static boolean flag for preference updates and initialize it to false
+    private static boolean PREFERENCES_HAVE_BEEN_UPDATED = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +127,9 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
          */
         getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
 
+        // Register MainActivity as a OnSharedPreferenceChangedListener
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .registerOnSharedPreferenceChangeListener(this);
     }
 
     /**
@@ -207,6 +216,11 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
             return true;
         }
 
+        if(id == R.id.action_settings){
+            Intent startSettingsActivity = new Intent(this, SettingsActivity.class);
+            startActivity(startSettingsActivity);
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -327,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
      */
     private void openLocationInMap() {
 
-        String addressString = "1600 Ampitheatre Parkway, CA";
+        String addressString = SunshinePreferences.getPreferredWeatherLocation(this);
         Uri geoLocation = Uri.parse("geo:0,0?q=" + addressString);
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -338,5 +352,36 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.F
         } else {
             Log.d("TAG", "Couldn't call " + geoLocation.toString() + ", no receiving apps installed!");
         }
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        /*
+         * Set this flag to true so that when control returns to MainActivity, it can refresh the
+         * data.
+         */
+        PREFERENCES_HAVE_BEEN_UPDATED = true;
+    }
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // In onStart, if preferences have been changed, refresh the data and set the flag to false
+        if (PREFERENCES_HAVE_BEEN_UPDATED) {
+            Log.d("PREF_UPDATE", "onStart: preferences were updated");
+            getSupportLoaderManager().restartLoader(FORECAST_LOADER_ID, null, this);
+            PREFERENCES_HAVE_BEEN_UPDATED = false;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        /* Unregister MainActivity as an OnPreferenceChangedListener to avoid any memory leaks. */
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
     }
 }
