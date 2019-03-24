@@ -3,9 +3,12 @@ package com.example.android.sunshine.sync;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.text.format.DateUtils;
 
+import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.utilities.NetworkUtils;
+import com.example.android.sunshine.utilities.NotificationUtils;
 import com.example.android.sunshine.utilities.OpenWeatherJsonUtils;
 
 import java.net.URL;
@@ -57,6 +60,31 @@ public class SunshineSyncTask {
                 sunshineContentResolver.bulkInsert(
                         WeatherContract.WeatherEntry.CONTENT_URI,
                         weatherValues);
+
+                /*
+                * Lastly, after inserting data into ContentProvider, determine if system needs to
+                * notify users that data is refreshed
+                */
+                boolean notificationsEnabled = SunshinePreferences.areNotificationsEnabled(context);
+
+                /*
+                * If last notification was shown more than one day ago, the system should send
+                * another notification to notify weather is updated.
+                */
+                long timeSinceLastNotification = SunshinePreferences
+                        .getEllapsedTimeSinceLastNotification(context);
+
+                boolean oneDayPassedSinceLastNotification = true;
+
+                // Check if a day has passed since previous notification
+                if(timeSinceLastNotification >= DateUtils.DAY_IN_MILLIS){
+                    oneDayPassedSinceLastNotification = true;
+                }
+
+                // Only notify user if user wants them and haven't shown in past day
+                if(notificationsEnabled && oneDayPassedSinceLastNotification){
+                    NotificationUtils.notifyUserOfNewWeather(context);
+                }
             }
 
             /* Sync is successful when reaching this point */
