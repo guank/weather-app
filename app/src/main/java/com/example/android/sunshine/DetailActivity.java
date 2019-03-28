@@ -2,6 +2,7 @@ package com.example.android.sunshine;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
@@ -12,14 +13,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.TextView;
 
 import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.utilities.SunshineDateUtils;
 import com.example.android.sunshine.utilities.SunshineWeatherUtils;
+import com.example.android.sunshine.databinding.ActivityDetailBinding;
 
 public class DetailActivity extends AppCompatActivity implements
-//      COMPLETED (21) Implement LoaderManager.LoaderCallbacks<Cursor>
+
         LoaderManager.LoaderCallbacks<Cursor> {
 
     /*
@@ -28,7 +29,6 @@ public class DetailActivity extends AppCompatActivity implements
      */
     private static final String FORECAST_SHARE_HASHTAG = " #SunshineApp";
 
-//  COMPLETED (18) Create a String array containing the names of the desired data columns from our ContentProvider
     /*
      * The columns of data that we are interested in displaying within our DetailActivity's
      * weather display.
@@ -44,7 +44,6 @@ public class DetailActivity extends AppCompatActivity implements
             WeatherContract.WeatherEntry.COLUMN_WEATHER_ID
     };
 
-//  COMPLETED (19) Create constant int values representing each column name's position above
     /*
      * We store the indices of the values in the array of Strings above to more quickly be able
      * to access the data from our query. If the order of the Strings above changes, these
@@ -59,7 +58,6 @@ public class DetailActivity extends AppCompatActivity implements
     public static final int INDEX_WEATHER_DEGREES = 6;
     public static final int INDEX_WEATHER_CONDITION_ID = 7;
 
-//  COMPLETED (20) Create a constant int to identify our loader used in DetailActivity
     /*
      * This ID will be used to identify the Loader responsible for loading the weather details
      * for a particular day. In some cases, one Activity can deal with many Loaders. However, in
@@ -72,43 +70,28 @@ public class DetailActivity extends AppCompatActivity implements
     /* A summary of the forecast that can be shared by clicking the share button in the ActionBar */
     private String mForecastSummary;
 
-//  COMPLETED (15) Declare a private Uri field called mUri
     /* The URI that is used to access the chosen day's weather details */
     private Uri mUri;
 
-//  COMPLETED (10) Remove the mWeatherDisplay TextView declaration
-
-//  COMPLETED (11) Declare TextViews for the date, description, high, low, humidity, wind, and pressure
-    private TextView mDateView;
-    private TextView mDescriptionView;
-    private TextView mHighTemperatureView;
-    private TextView mLowTemperatureView;
-    private TextView mHumidityView;
-    private TextView mWindView;
-    private TextView mPressureView;
+    /*
+     * This field is used for data binding. Normally, we would have to call findViewById many
+     * times to get references to the Views in this Activity. With data binding however, we only
+     * need to call DataBindingUtil.setContentView and pass in a Context and a layout, as we do
+     * in onCreate of this class. Then, we can access all of the Views in our layout
+     * programmatically without cluttering up the code with findViewById.
+     */
+    private ActivityDetailBinding mDetailBinding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_detail);
-//      COMPLETED (12) Remove mWeatherDisplay TextView
-//      COMPLETED (13) Find each of the TextViews by ID
-        mDateView = (TextView) findViewById(R.id.date);
-        mDescriptionView = (TextView) findViewById(R.id.weather_description);
-        mHighTemperatureView = (TextView) findViewById(R.id.high_temperature);
-        mLowTemperatureView = (TextView) findViewById(R.id.low_temperature);
-        mHumidityView = (TextView) findViewById(R.id.humidity);
-        mWindView = (TextView) findViewById(R.id.wind);
-        mPressureView = (TextView) findViewById(R.id.pressure);
+        //  Select layout for binding data to view recyclerview object when clicked
+        mDetailBinding = DataBindingUtil.setContentView(this, R.layout.activity_detail);
 
-//      COMPLETED (14) Remove the code that checks for extra text
-
-//      COMPLETED (16) Use getData to get a reference to the URI passed with this Activity's Intent
+        // Use getData to get a reference to the URI passed with this Activity's Intent
         mUri = getIntent().getData();
-//      COMPLETED (17) Throw a NullPointerException if that URI is null
         if (mUri == null) throw new NullPointerException("URI for DetailActivity cannot be null");
 
-//      COMPLETED (35) Initialize the loader for DetailActivity
         /* This connects our Activity into the loader lifecycle. */
         getSupportLoaderManager().initLoader(ID_DETAIL_LOADER, null, this);
     }
@@ -121,7 +104,7 @@ public class DetailActivity extends AppCompatActivity implements
      * @return You must return true for the menu to be displayed;
      *         if you return false it will not be shown.
      *
-     * @see #onPrepareOptionsMenu
+     * @see android.app.Activity#onPrepareOptionsMenu(Menu)
      * @see #onOptionsItemSelected
      */
     @Override
@@ -180,7 +163,6 @@ public class DetailActivity extends AppCompatActivity implements
         return shareIntent;
     }
 
-//  COMPLETED (22) Override onCreateLoader
     /**
      * Creates and returns a CursorLoader that loads the data for our URI and stores it in a Cursor.
      *
@@ -209,7 +191,6 @@ public class DetailActivity extends AppCompatActivity implements
         }
     }
 
-//  COMPLETED (24) Override onLoadFinished
     /**
      * Runs on the main thread when a load is complete. If initLoader is called (we call it from
      * onCreate in DetailActivity) and the LoaderManager already has completed a previous load
@@ -223,7 +204,6 @@ public class DetailActivity extends AppCompatActivity implements
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
 
-//      COMPLETED (25) Check before doing anything that the Cursor has valid data
         /*
          * Before we bind the data to the UI that will display that data, we need to check the
          * cursor to make sure we have the results that we are expecting. In order to do that, we
@@ -245,7 +225,17 @@ public class DetailActivity extends AppCompatActivity implements
             return;
         }
 
-//      COMPLETED (26) Display a readable data string
+        /****************
+         * Weather Icon *
+         ****************/
+        /* Read weather condition ID from the cursor (ID provided by Open Weather Map) */
+        int weatherId = data.getInt(INDEX_WEATHER_CONDITION_ID);
+        /* Use our utility method to determine the resource ID for the proper art */
+        int weatherImageId = SunshineWeatherUtils.getLargeArtResourceIdForWeatherCondition(weatherId);
+
+        // Set resource ID on icon to display the image
+        mDetailBinding.primaryInfo.weatherIcon.setImageResource(weatherImageId);
+
         /****************
          * Weather Date *
          ****************/
@@ -261,21 +251,25 @@ public class DetailActivity extends AppCompatActivity implements
         long localDateMidnightGmt = data.getLong(INDEX_WEATHER_DATE);
         String dateText = SunshineDateUtils.getFriendlyDateString(this, localDateMidnightGmt, true);
 
-        mDateView.setText(dateText);
+        // Display the date
+        mDetailBinding.primaryInfo.date.setText(dateText);
 
-//      COMPLETED (27) Display the weather description (using SunshineWeatherUtils)
         /***********************
          * Weather Description *
          ***********************/
-        /* Read weather condition ID from the cursor (ID provided by Open Weather Map) */
-        int weatherId = data.getInt(INDEX_WEATHER_CONDITION_ID);
         /* Use the weatherId to obtain the proper description */
         String description = SunshineWeatherUtils.getStringForWeatherCondition(this, weatherId);
 
-        /* Set the text */
-        mDescriptionView.setText(description);
+        /* Create the accessibility (a11y) String from the weather description */
+        String descriptionA11y = getString(R.string.a11y_forecast, description);
 
-//      COMPLETED (28) Display the high temperature
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.primaryInfo.weatherDescription.setText(description);
+        mDetailBinding.primaryInfo.weatherDescription.setContentDescription(descriptionA11y);
+
+        /* Set the content description on the weather image (for accessibility purposes) */
+        mDetailBinding.primaryInfo.weatherIcon.setContentDescription(descriptionA11y);
+
         /**************************
          * High (max) temperature *
          **************************/
@@ -288,10 +282,13 @@ public class DetailActivity extends AppCompatActivity implements
          */
         String highString = SunshineWeatherUtils.formatTemperature(this, highInCelsius);
 
-        /* Set the text */
-        mHighTemperatureView.setText(highString);
+        /* Create the accessibility (a11y) String from the weather description */
+        String highA11y = getString(R.string.a11y_high_temp, highString);
 
-//      COMPLETED (29) Display the low temperature
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.primaryInfo.highTemperature.setText(highString);
+        mDetailBinding.primaryInfo.highTemperature.setContentDescription(highA11y);
+
         /*************************
          * Low (min) temperature *
          *************************/
@@ -304,10 +301,13 @@ public class DetailActivity extends AppCompatActivity implements
          */
         String lowString = SunshineWeatherUtils.formatTemperature(this, lowInCelsius);
 
-        /* Set the text */
-        mLowTemperatureView.setText(lowString);
+        // Content description for low temperature for a11y
+        String lowA11y = getString(R.string.a11y_low_temp, lowString);
 
-//      COMPLETED (30) Display the humidity
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.primaryInfo.lowTemperature.setText(lowString);
+        mDetailBinding.primaryInfo.lowTemperature.setContentDescription(lowA11y);
+
         /************
          * Humidity *
          ************/
@@ -315,10 +315,17 @@ public class DetailActivity extends AppCompatActivity implements
         float humidity = data.getFloat(INDEX_WEATHER_HUMIDITY);
         String humidityString = getString(R.string.format_humidity, humidity);
 
-        /* Set the text */
-        mHumidityView.setText(humidityString);
+        // Content description for the humidity for a11y
+        String humidityA11y = getString(R.string.a11y_humidity, humidityString);
 
-//      COMPLETED (31) Display the wind speed and direction
+        // Use mDetailBinding to display the humidity and set the content description
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.extraDetails.humidity.setText(humidityString);
+        mDetailBinding.extraDetails.humidity.setContentDescription(humidityA11y);
+
+        // Set the content description of the humidity label to the humidity a11y String
+        mDetailBinding.extraDetails.humidityLabel.setContentDescription(humidityA11y);
+
         /****************************
          * Wind speed and direction *
          ****************************/
@@ -327,10 +334,17 @@ public class DetailActivity extends AppCompatActivity implements
         float windDirection = data.getFloat(INDEX_WEATHER_DEGREES);
         String windString = SunshineWeatherUtils.getFormattedWind(this, windSpeed, windDirection);
 
-        /* Set the text */
-        mWindView.setText(windString);
+        // Content description for the wind for a11y
+        String windA11y = getString(R.string.a11y_wind, windString);
 
-//      COMPLETED (32) Display the pressure
+        // Use mDetailBinding to display the wind and set the content description
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.extraDetails.windMeasurement.setText(windString);
+        mDetailBinding.extraDetails.windMeasurement.setContentDescription(windA11y);
+
+        // Set the content description of the wind label to the wind a11y String
+        mDetailBinding.extraDetails.windLabel.setContentDescription(windA11y);
+
         /************
          * Pressure *
          ************/
@@ -346,16 +360,22 @@ public class DetailActivity extends AppCompatActivity implements
          */
         String pressureString = getString(R.string.format_pressure, pressure);
 
-        /* Set the text */
-        mPressureView.setText(pressureString);
+        // Content description for the pressure for a11y
+        String pressureA11y = getString(R.string.a11y_pressure, pressureString);
 
-//      COMPLETED (33) Store a forecast summary in mForecastSummary
+        // Use mDetailBinding to display the pressure and set the content description
+        /* Set the text and content description (for accessibility purposes) */
+        mDetailBinding.extraDetails.pressure.setText(pressureString);
+        mDetailBinding.extraDetails.pressure.setContentDescription(pressureA11y);
+
+        // Set the content description of the pressure label to the pressure a11y String
+        mDetailBinding.extraDetails.pressureLabel.setContentDescription(pressureA11y);
+
         /* Store the forecast summary String in our forecast summary field to share later */
         mForecastSummary = String.format("%s - %s - %s/%s",
                 dateText, description, highString, lowString);
     }
 
-//  COMPLETED (34) Override onLoaderReset, but don't do anything in it yet
     /**
      * Called when a previously created loader is being reset, thus making its data unavailable.
      * The application should at this point remove any references it has to the Loader's data.

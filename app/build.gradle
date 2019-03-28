@@ -16,6 +16,9 @@ android {
             minifyEnabled false
         }
     }
+
+    // For binding data for view when clicking list object
+    dataBinding.enabled = true
 }
 
 dependencies {
